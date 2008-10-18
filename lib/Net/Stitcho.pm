@@ -7,7 +7,7 @@ use Carp::Clan;
 use URI::Escape qw( uri_escape_utf8 );
 use Digest::MD5 qw( md5_hex );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 __PACKAGE__->mk_ro_accessors(qw( key id ));
 
@@ -23,10 +23,10 @@ sub send_uri {
   my @params;
   push @params, 'p='.$self->id;
   push @params, 'i='.$icon if defined $icon;
-  push @params, 'md5=',md5_hex($email);
-  push @params, 't=',uri_escape_utf8($title);
-  push @params, 'm=',uri_escape_utf8($mesg);
-  push @params, 'u=',uri_escape_utf8($url);
+  push @params, 'md5='.md5_hex($email);
+  push @params, 't='.uri_escape_utf8($title);
+  push @params, 'm='.uri_escape_utf8($mesg);
+  push @params, 'u='.uri_escape_utf8($url);
   my $call = join('&', @params);
   
   # sign the call
@@ -74,9 +74,6 @@ sub _req_params {
   return @r;
 }
 
-sub _uri_escape {
-  
-}
 
 42; # End of Net::Stitcho
 
