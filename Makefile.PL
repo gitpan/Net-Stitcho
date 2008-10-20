@@ -12,6 +12,8 @@ requires 'URI::Escape'           => 0;
 requires 'Digest::MD5'           => 0;
 
 build_requires 'Test::More';
+build_requires 'Test::Exception';
+build_requires 'Encode';
 
 WriteAll;
 

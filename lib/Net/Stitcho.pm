@@ -7,7 +7,7 @@ use Carp::Clan;
 use URI::Escape qw( uri_escape_utf8 );
 use Digest::MD5 qw( md5_hex );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 __PACKAGE__->mk_ro_accessors(qw( key id ));
 
@@ -27,24 +27,50 @@ sub send_uri {
   push @params, 't='.uri_escape_utf8($title);
   push @params, 'm='.uri_escape_utf8($mesg);
   push @params, 'u='.uri_escape_utf8($url);
-  my $call = join('&', @params);
   
-  # sign the call
-  my $sig = md5_hex($call.$self->key);
-  
-  # construct the final URL
-  return qq{http://api.stitcho.com/api/partner/send?$call&s=$sig};
+  return $self->_signed_api_call('send', @params);
 }
 
 sub send {
   my $self = shift;
   
-  my $uri = $self->send_uri(@_);
+  return $self->_call_api($self->send_uri(@_));
+}
+
+
+sub signup_uri {
+  my ($self, $args) = @_;
   
+  # Parse arguments
+  my ($email, $mesg)
+      = _req_params($args, qw( email message ));
+  
+  # Construct list of parameters to sign
+  my @params;
+  push @params, 'p='.$self->id;
+  push @params, 'e='.uri_escape_utf8($email);
+  push @params, 'm='.uri_escape_utf8($mesg);
+  
+  return $self->_signed_api_call('signup', @params);
+}
+
+sub signup {
+  my $self = shift;
+  
+  return $self->_call_api($self->signup_uri(@_));
+}
+
+
+#######
+# Utils
+
+sub _call_api {
+  my ($self, $uri) = @_;
+
   eval { require LWP::UserAgent };
   croak('FATAL: LWP::UserAgent is required to use the send() method')
     if $@;
-  
+
   my $ua = LWP::UserAgent->new;
   my $res = $ua->get($uri);
 
@@ -53,10 +79,17 @@ sub send {
   return $code;
 }
 
-
-
-#######
-# Utils
+sub _signed_api_call {
+  my ($self, $api, @params) = @_;
+  
+  my $call = join('&', @params);
+  
+  # sign the call
+  my $sig = md5_hex($call.$self->key);
+  
+  # construct the final URL
+  return qq{http://api.stitcho.com/api/partner/$api?$call&s=$sig};
+}
 
 sub _req_params {
   my $args = shift;
@@ -133,7 +166,7 @@ You can use this module in two ways:
 =back
 
 The first option is best if you have a way to do the HTTP GET request
-yourself. For example, if you are using AnyEvent or POE, you can use
+yourself. For example, if you are using L<AnyEvent> or L<POE>, you can use
 their Async HTTP client to call the API using the URI calculated by
 this module.
 
@@ -203,9 +236,9 @@ HTTP client to do the actual call.
 
 Sends a notification to a user.
 
-Accepts the same parameters as the send_uri() method.
+Accepts the same parameters as the C<send_uri()> method.
 
-After creating a proper URL, uses LWP::UserAgent to call the API.
+After creating a proper URL, uses L<LWP::UserAgent> to call the API.
 
 If successful, returns no error (undef).
 
@@ -231,8 +264,8 @@ If you get this error code, report it as a bug to the author of this module.
 
 =item 401
 
-The signature was invalid. Check the id and key parameters to your
-call to new().
+The signature was invalid. Check the C<id> and C<key> parameters to your
+call to C<new()>.
 
 
 =item 500
@@ -241,6 +274,42 @@ An unanticipated error occurred, and the problem most likely lies
 with Stitcho, not your software. Retry in a minute or so.
 
 =back
+
+
+
+=head2 signup_uri
+
+Constructs the URI to use to send the signup email message
+to a email address.
+
+Accepts a hashref of parameters. Valid keys are:
+
+
+=over 4
+
+=item email
+
+Email address of recipient.
+
+=item message
+
+Email message text.
+
+=back
+
+Returns the complete URI to use to call the Signup API. Use your prefered
+HTTP client to do the actual call.
+
+
+=head2 signup
+
+Sends a signup email to a email address.
+
+Accepts the same parameters as the C<signup_uri()> method.
+
+After creating a proper URL, uses L<LWP::UserAgent> to call the API.
+
+See the C<send()> method for possible return codes.
 
 
 
